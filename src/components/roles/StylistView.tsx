@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Scissors,
   CheckCircle,
@@ -15,15 +15,23 @@ import {
   MapPin,
   Phone,
   MessageCircle,
+  Search,
+  Filter,
+  ArrowRight,
 } from 'lucide-react';
 import { useMarketplace } from '../../context/MarketplaceContext';
 import { Product, ProductVariant } from '../../types';
 import { ProductDetailModal } from '../common/ProductDetailModal';
 
-export const StylistView: React.FC = () => {
+interface Props {
+  onOpenCart?: () => void;
+}
+
+export const StylistView: React.FC<Props> = ({ onOpenCart }) => {
   const {
     activeTab,
     products,
+    categories,
     stylists,
     currentStylistVerified,
     submitStylistApplication,
@@ -32,6 +40,7 @@ export const StylistView: React.FC = () => {
     salonsDirectory,
     addSalontoDirectory,
     addToCart,
+    cart,
   } = useMarketplace();
 
   // Find verification profile
@@ -42,6 +51,11 @@ export const StylistView: React.FC = () => {
 
   // Selected product for technical sheet modal
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+
+  // Search & category filter for pro catalog
+  const [proSearchQuery, setProSearchQuery] = useState('');
+  const [proCategoryFilter, setProCategoryFilter] = useState('all');
+  const [onlyExclusives, setOnlyExclusives] = useState(false);
 
   // Verification Form state
   const [fullName, setFullName] = useState(stylistProfile?.fullName || '');
@@ -60,6 +74,25 @@ export const StylistView: React.FC = () => {
   const [salonZone, setSalonZone] = useState('');
   const [salonWhatsapp, setSalonWhatsapp] = useState('');
   const [salonImage, setSalonImage] = useState('');
+
+  // Cart quantity
+  const totalCartCount = cart.reduce((acc, curr) => acc + curr.quantity, 0);
+
+  // Filtered pro products
+  const filteredProProducts = useMemo(() => {
+    return products.filter((p) => {
+      if (onlyExclusives && !p.isSalonExclusive) return false;
+      if (proCategoryFilter !== 'all' && p.category !== proCategoryFilter) return false;
+      if (proSearchQuery.trim()) {
+        const q = proSearchQuery.toLowerCase();
+        const matchesTitle = p.title.toLowerCase().includes(q);
+        const matchesBrand = p.brand.toLowerCase().includes(q);
+        const matchesSubcat = p.subcategory.toLowerCase().includes(q);
+        if (!matchesTitle && !matchesBrand && !matchesSubcat) return false;
+      }
+      return true;
+    });
+  }, [products, proCategoryFilter, onlyExclusives, proSearchQuery]);
 
   const handleSubmitVerification = (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,7 +126,7 @@ export const StylistView: React.FC = () => {
   };
 
   return (
-    <div className="w-full max-w-7xl mx-auto space-y-6 pb-20 lg:pb-10">
+    <div className="w-full max-w-7xl mx-auto space-y-6 pb-28 lg:pb-10 relative">
       {/* Top Pro Banner / Status */}
       <div className="bg-gradient-to-r from-rose-900 via-rose-800 to-slate-900 rounded-3xl p-5 sm:p-7 text-white shadow-xl relative overflow-hidden">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -120,7 +153,7 @@ export const StylistView: React.FC = () => {
             </p>
           </div>
 
-          <div className="bg-white/10 backdrop-blur-md p-3.5 rounded-2xl border border-white/15 text-xs space-y-1">
+          <div className="bg-white/10 backdrop-blur-md p-3.5 rounded-2xl border border-white/15 text-xs space-y-1 self-start md:self-auto">
             <span className="text-rose-200 block text-[11px]">Salón Vinculado:</span>
             <strong className="text-white text-sm block">{stylistProfile?.salonName || 'Salón de Belleza Pro'}</strong>
             <span className="text-emerald-300 font-bold">Ahorro promedio Pro: ~35% sobre PVP</span>
@@ -140,8 +173,45 @@ export const StylistView: React.FC = () => {
             </div>
           </div>
 
+          {/* Search & Filter Bar */}
+          <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center gap-2.5 text-xs">
+            <div className="relative flex-1 min-w-[220px]">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Buscar insumos pro (Decolorante, Keratina, Majirel, Plex)..."
+                value={proSearchQuery}
+                onChange={(e) => setProSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 border rounded-xl bg-slate-50 focus:bg-white text-xs outline-none"
+              />
+            </div>
+
+            <select
+              value={proCategoryFilter}
+              onChange={(e) => setProCategoryFilter(e.target.value)}
+              className="p-2 border rounded-xl bg-white font-medium text-slate-700"
+            >
+              <option value="all">Todas las Categorías</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.name}>{c.name}</option>
+              ))}
+            </select>
+
+            <button
+              onClick={() => setOnlyExclusives(!onlyExclusives)}
+              className={`px-3 py-2 rounded-xl font-bold transition flex items-center gap-1.5 ${
+                onlyExclusives
+                  ? 'bg-rose-900 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              Solo Insumos Restringidos Pro
+            </button>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {products.map((p) => {
+            {filteredProProducts.map((p) => {
               const defaultVariant = p.variants[0];
               const saving = defaultVariant ? defaultVariant.priceB2C - defaultVariant.priceB2B : 0;
               return (
@@ -203,7 +273,7 @@ export const StylistView: React.FC = () => {
                   <div className="p-4 border-t border-slate-100 flex items-center gap-2">
                     <button
                       onClick={() => setSelectedProduct(p)}
-                      className="flex-1 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition"
+                      className="flex-1 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition active:scale-95"
                     >
                       Ver Ficha Técnica
                     </button>
@@ -383,7 +453,7 @@ export const StylistView: React.FC = () => {
 
                 <button
                   type="submit"
-                  className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs sm:text-sm shadow-md transition"
+                  className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs sm:text-sm shadow-md transition active:scale-95"
                 >
                   Enviar para Validación de Superadministrador
                 </button>
@@ -479,7 +549,7 @@ export const StylistView: React.FC = () => {
                           <div className="pt-2 border-t border-slate-200 flex justify-end">
                             <button
                               onClick={() => confirmOrderReceived(ord.id, sub.subOrderId)}
-                              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition"
+                              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition active:scale-95"
                             >
                               Confirmar Recepción de Insumos
                             </button>
@@ -508,7 +578,7 @@ export const StylistView: React.FC = () => {
 
             <button
               onClick={() => setShowAddSalon(true)}
-              className="px-4 py-2.5 rounded-xl bg-slate-900 text-white font-bold text-xs sm:text-sm hover:bg-slate-800 transition"
+              className="px-4 py-2.5 rounded-xl bg-slate-900 text-white font-bold text-xs sm:text-sm hover:bg-slate-800 transition active:scale-95 self-start sm:self-auto"
             >
               + Registrar Mi Salón en Directorio
             </button>
@@ -606,7 +676,7 @@ export const StylistView: React.FC = () => {
                   <div className="flex gap-2 pt-2">
                     <button
                       type="submit"
-                      className="flex-1 py-2.5 bg-rose-600 text-white font-bold rounded-xl hover:bg-rose-700"
+                      className="flex-1 py-2.5 bg-rose-600 text-white font-bold rounded-xl hover:bg-rose-700 active:scale-95"
                     >
                       Publicar Salón
                     </button>
@@ -622,6 +692,20 @@ export const StylistView: React.FC = () => {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Floating Sticky Cart Button for Stylist */}
+      {totalCartCount > 0 && onOpenCart && (
+        <div className="fixed bottom-20 right-4 sm:right-6 z-40 lg:hidden animate-bounce">
+          <button
+            onClick={onOpenCart}
+            className="flex items-center gap-2.5 px-4 py-3 bg-gradient-to-r from-rose-600 to-rose-700 text-white font-bold text-xs sm:text-sm rounded-full shadow-2xl hover:scale-105 active:scale-95 transition"
+          >
+            <ShoppingBag className="w-5 h-5 text-white" />
+            <span>Carrito Pro ({totalCartCount})</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
         </div>
       )}
 

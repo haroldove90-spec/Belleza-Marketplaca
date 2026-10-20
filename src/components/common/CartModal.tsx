@@ -130,7 +130,7 @@ export const CartModal: React.FC<Props> = ({ isOpen, onClose }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/60 backdrop-blur-xs overflow-y-auto">
-      <div className="relative w-full max-w-2xl rounded-3xl bg-white shadow-2xl border border-slate-200 overflow-hidden my-auto max-h-[94vh] flex flex-col">
+      <div className="relative w-full max-w-2xl rounded-3xl bg-white shadow-2xl border border-slate-200 overflow-hidden my-auto max-h-[90dvh] flex flex-col">
         {/* Header */}
         <div className="p-4 sm:p-6 border-b border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-2">

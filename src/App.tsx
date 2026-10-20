@@ -26,22 +26,22 @@ const MainLayout: React.FC = () => {
   }
 
   return (
-    <div className="w-full min-h-screen bg-slate-50 flex flex-col antialiased">
+    <div className="w-full min-h-[100dvh] bg-slate-50 flex flex-col antialiased">
       <OfflineIndicator />
 
       {/* Unified Institutional Header */}
       <Header onOpenCart={() => setIsCartOpen(true)} />
 
       {/* Main Workspace Area: Desktop Sidebar + Fluid Content */}
-      <div className="flex-1 flex w-full overflow-hidden">
+      <div className="flex-1 flex w-full lg:h-[calc(100dvh-4rem)] lg:overflow-hidden">
         {/* Desktop Collapsible Sidebar */}
         <Sidebar />
 
         {/* Dynamic Center Work Area */}
-        <main className="flex-1 w-full overflow-y-auto px-3 sm:px-6 md:px-8 py-4 sm:py-6">
+        <main className="flex-1 w-full overflow-y-auto px-3 sm:px-6 md:px-8 py-4 sm:py-6 pb-28 lg:pb-10">
           {currentRole === 'superadmin' && <AdminView />}
           {currentRole === 'seller' && <SellerView />}
-          {currentRole === 'stylist' && <StylistView />}
+          {currentRole === 'stylist' && <StylistView onOpenCart={() => setIsCartOpen(true)} />}
           {currentRole === 'customer' && <CustomerView onOpenCart={() => setIsCartOpen(true)} />}
         </main>
       </div>

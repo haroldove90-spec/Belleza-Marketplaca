@@ -15,6 +15,9 @@ import {
   Tag,
   Boxes,
   Send,
+  Printer,
+  X,
+  Barcode,
 } from 'lucide-react';
 import { useMarketplace } from '../../context/MarketplaceContext';
 import { Product, ProductVariant, OrderStatus } from '../../types';
@@ -31,10 +34,14 @@ export const SellerView: React.FC = () => {
     updateSeller,
     orders,
     updateSubOrderStatus,
+    showToast,
   } = useMarketplace();
 
   // Pick seller-1 as the primary logged-in seller demo
   const currentSeller = sellers[0] || sellers[0];
+
+  // Orders status filter
+  const [orderFilter, setOrderFilter] = useState<string>('todos');
 
   // Seller's specific orders
   const sellerSubOrders: {
@@ -59,6 +66,16 @@ export const SellerView: React.FC = () => {
         });
       }
     });
+  });
+
+  // Filtered suborders
+  const filteredSubOrders = sellerSubOrders.filter((item) => {
+    if (orderFilter === 'todos') return true;
+    if (orderFilter === 'preparacion') return item.subOrder.status === 'En preparación';
+    if (orderFilter === 'empacado') return item.subOrder.status === 'Empacado';
+    if (orderFilter === 'enviado') return item.subOrder.status === 'Enviado';
+    if (orderFilter === 'entregado') return item.subOrder.status === 'Entregado';
+    return true;
   });
 
   // Modal / Form state for Add/Edit Product
@@ -90,6 +107,9 @@ export const SellerView: React.FC = () => {
     carrier: string;
     trackingNumber: string;
   } | null>(null);
+
+  // Shipping Label / Packing Slip preview modal state
+  const [labelModalData, setLabelModalData] = useState<any | null>(null);
 
   // Store profile form state
   const [storeName, setStoreName] = useState(currentSeller.storeName);
@@ -182,6 +202,20 @@ export const SellerView: React.FC = () => {
     setShowProductModal(false);
   };
 
+  // Quick Stock adjuster
+  const adjustStock = (productId: string, variantId: string, amount: number) => {
+    const prod = products.find((p) => p.id === productId);
+    if (!prod) return;
+    const updatedVariants = prod.variants.map((v) => {
+      if (v.id === variantId) {
+        return { ...v, stock: Math.max(0, v.stock + amount) };
+      }
+      return v;
+    });
+    updateProduct(productId, { variants: updatedVariants });
+    showToast(`Stock actualizado para variante (${amount > 0 ? `+${amount}` : amount}).`);
+  };
+
   const handleSaveStoreProfile = (e: React.FormEvent) => {
     e.preventDefault();
     updateSeller(currentSeller.id, {
@@ -225,13 +259,13 @@ export const SellerView: React.FC = () => {
   };
 
   return (
-    <div className="w-full max-w-7xl mx-auto space-y-6 pb-20 lg:pb-10">
+    <div className="w-full max-w-7xl mx-auto space-y-6 pb-24 lg:pb-10">
       {/* Tab: Gestión de Productos */}
       {activeTab === 'productos' && (
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-slate-900">
+              <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
                 Mis Productos &amp; Catálogo Vendedor
               </h1>
               <p className="text-xs sm:text-sm text-slate-500">
@@ -241,14 +275,14 @@ export const SellerView: React.FC = () => {
 
             <button
               onClick={openNewProductModal}
-              className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs sm:text-sm shadow-md transition flex items-center justify-center gap-2 active:scale-95"
+              className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs sm:text-sm shadow-md transition flex items-center justify-center gap-2 active:scale-95 self-start sm:self-auto"
             >
               <Plus className="w-4 h-4" /> Publicar Nuevo Producto
             </button>
           </div>
 
           {/* Product Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {products.map((p) => {
               const totalStock = p.variants.reduce((acc, v) => acc + v.stock, 0);
               const isLowStock = totalStock <= p.minStockAlert;
@@ -299,10 +333,31 @@ export const SellerView: React.FC = () => {
                         </div>
                       </div>
 
-                      {/* Variants list summary */}
-                      <div className="text-[11px] text-slate-500">
-                        <strong>Variantes ({p.variants.length}):</strong>{' '}
-                        {p.variants.map((v) => `${v.name} (${v.stock})`).join(', ')}
+                      {/* Quick stock controls */}
+                      <div className="bg-slate-50/70 p-2.5 rounded-xl border border-slate-200/60 space-y-1.5 text-xs">
+                        <span className="text-[10px] font-bold text-slate-600 uppercase block">Ajuste Rápido de Stock:</span>
+                        {p.variants.map((v) => (
+                          <div key={v.id} className="flex items-center justify-between text-[11px]">
+                            <span className="truncate max-w-[120px] font-medium">{v.name}:</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-bold font-mono w-7 text-center">{v.stock}</span>
+                              <button
+                                onClick={() => adjustStock(p.id, v.id, -5)}
+                                className="w-5 h-5 rounded bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold flex items-center justify-center text-xs"
+                                title="Reducir 5 unidades"
+                              >
+                                -5
+                              </button>
+                              <button
+                                onClick={() => adjustStock(p.id, v.id, 10)}
+                                className="w-5 h-5 rounded bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold flex items-center justify-center text-xs"
+                                title="Agregar 10 unidades"
+                              >
+                                +10
+                              </button>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   </div>
@@ -310,13 +365,13 @@ export const SellerView: React.FC = () => {
                   <div className="p-4 border-t border-slate-100 flex items-center justify-between gap-2">
                     <button
                       onClick={() => openEditProductModal(p)}
-                      className="flex-1 py-1.5 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition"
+                      className="flex-1 py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs flex items-center justify-center gap-1.5 transition active:scale-95"
                     >
-                      <Edit className="w-3.5 h-3.5" /> Editar
+                      <Edit className="w-3.5 h-3.5" /> Editar Producto
                     </button>
                     <button
                       onClick={() => deleteProduct(p.id)}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
+                      className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
                       title="Eliminar producto"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -332,24 +387,49 @@ export const SellerView: React.FC = () => {
       {/* Tab: Gestión de Pedidos & Envíos */}
       {activeTab === 'pedidos' && (
         <div className="space-y-6">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-900">
-              Gestión de Pedidos &amp; Despacho
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-500">
-              Notificaciones de órdenes recibidas, cambio de estatus de empaque y generación de guías transportistas.
-            </p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                Gestión de Pedidos &amp; Despacho
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-500">
+                Notificaciones de órdenes recibidas, cambio de estatus de empaque y generación de guías transportistas.
+              </p>
+            </div>
+
+            {/* Filter buttons */}
+            <div className="flex flex-wrap items-center gap-1.5 bg-white p-1 rounded-xl border border-slate-200 text-xs self-start sm:self-auto">
+              {[
+                { id: 'todos', label: 'Todos' },
+                { id: 'preparacion', label: 'Por Empacar' },
+                { id: 'empacado', label: 'Empacados' },
+                { id: 'enviado', label: 'En Tránsito' },
+                { id: 'entregado', label: 'Entregados' },
+              ].map((btn) => (
+                <button
+                  key={btn.id}
+                  onClick={() => setOrderFilter(btn.id)}
+                  className={`px-2.5 py-1 rounded-lg font-medium transition ${
+                    orderFilter === btn.id
+                      ? 'bg-indigo-600 text-white font-bold shadow-xs'
+                      : 'text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  {btn.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="space-y-4">
-            {sellerSubOrders.length === 0 ? (
+            {filteredSubOrders.length === 0 ? (
               <div className="p-12 text-center bg-white rounded-2xl border border-slate-200">
                 <Truck className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                <p className="text-slate-600 font-bold">No tienes pedidos pendientes</p>
+                <p className="text-slate-600 font-bold">No hay pedidos con este filtro</p>
                 <p className="text-xs text-slate-400 mt-1">Los nuevos pedidos de compradores aparecerán aquí en tiempo real.</p>
               </div>
             ) : (
-              sellerSubOrders.map(({ orderId, subOrder, buyerName, buyerPhone, shippingAddress, createdAt }) => (
+              filteredSubOrders.map(({ orderId, subOrder, buyerName, buyerPhone, shippingAddress, createdAt }) => (
                 <div key={subOrder.subOrderId} className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs space-y-4">
                   <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3 text-xs">
                     <div>
@@ -417,43 +497,52 @@ export const SellerView: React.FC = () => {
                   </div>
 
                   {/* Operational workflow action buttons */}
-                  <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-100">
-                    {subOrder.status === 'En preparación' && (
-                      <button
-                        onClick={() => updateSubOrderStatus(orderId, subOrder.subOrderId, 'Empacado')}
-                        className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition"
-                      >
-                        Marcar como "Empacado"
-                      </button>
-                    )}
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
+                    <button
+                      onClick={() => setLabelModalData({ orderId, subOrder, buyerName, buyerPhone, shippingAddress, createdAt })}
+                      className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl flex items-center gap-1.5 transition"
+                    >
+                      <Printer className="w-3.5 h-3.5 text-slate-600" /> Ver Remisión &amp; Etiqueta
+                    </button>
 
-                    {subOrder.status === 'Empacado' && (
-                      <button
-                        onClick={() =>
-                          setTrackingModal({
-                            orderId,
-                            subOrderId: subOrder.subOrderId,
-                            carrier: 'DHL Express',
-                            trackingNumber: `DHL-MX-${Math.floor(100000000 + Math.random() * 900000000)}`,
-                          })
-                        }
-                        className="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-1.5"
-                      >
-                        <Send className="w-3.5 h-3.5" /> Asignar Guía &amp; Enviar
-                      </button>
-                    )}
+                    <div className="flex flex-wrap gap-2">
+                      {subOrder.status === 'En preparación' && (
+                        <button
+                          onClick={() => updateSubOrderStatus(orderId, subOrder.subOrderId, 'Empacado')}
+                          className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition active:scale-95"
+                        >
+                          Marcar como "Empacado"
+                        </button>
+                      )}
 
-                    {subOrder.status === 'Enviado' && (
-                      <span className="text-xs font-semibold text-blue-700 flex items-center gap-1.5">
-                        <CheckCircle className="w-4 h-4 text-blue-600" /> En tránsito con transportista. Esperando confirmación de entrega del cliente.
-                      </span>
-                    )}
+                      {subOrder.status === 'Empacado' && (
+                        <button
+                          onClick={() =>
+                            setTrackingModal({
+                              orderId,
+                              subOrderId: subOrder.subOrderId,
+                              carrier: 'DHL Express',
+                              trackingNumber: `DHL-MX-${Math.floor(100000000 + Math.random() * 900000000)}`,
+                            })
+                          }
+                          className="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 active:scale-95"
+                        >
+                          <Send className="w-3.5 h-3.5" /> Asignar Guía &amp; Enviar
+                        </button>
+                      )}
 
-                    {subOrder.status === 'Entregado' && (
-                      <span className="text-xs font-semibold text-emerald-700 flex items-center gap-1.5">
-                        <CheckCircle className="w-4 h-4 text-emerald-600" /> Entrega confirmada y fondos listos para liquidación.
-                      </span>
-                    )}
+                      {subOrder.status === 'Enviado' && (
+                        <span className="text-xs font-semibold text-blue-700 flex items-center gap-1.5">
+                          <CheckCircle className="w-4 h-4 text-blue-600" /> En tránsito. Esperando confirmación del cliente.
+                        </span>
+                      )}
+
+                      {subOrder.status === 'Entregado' && (
+                        <span className="text-xs font-semibold text-emerald-700 flex items-center gap-1.5">
+                          <CheckCircle className="w-4 h-4 text-emerald-600" /> Entrega confirmada y saldo listo.
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))
@@ -466,7 +555,7 @@ export const SellerView: React.FC = () => {
       {activeTab === 'metricas' && (
         <div className="space-y-6">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-900">
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
               Ventas, Saldo &amp; Liquidaciones
             </h1>
             <p className="text-xs sm:text-sm text-slate-500">
@@ -507,7 +596,9 @@ export const SellerView: React.FC = () => {
       {activeTab === 'tienda' && (
         <div className="space-y-6">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Perfil Público de Tienda &amp; Datos Fiscales</h1>
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+              Perfil Público de Tienda &amp; Datos Fiscales
+            </h1>
             <p className="text-xs sm:text-sm text-slate-500">
               Configura cómo ven los compradores y salones tu tienda oficial en Marketplace Belleza.
             </p>
@@ -543,7 +634,7 @@ export const SellerView: React.FC = () => {
                   type="text"
                   value={rfc}
                   onChange={(e) => setRfc(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-slate-200 bg-white"
+                  className="w-full p-2.5 rounded-xl border border-slate-200 bg-white uppercase font-mono"
                   required
                 />
               </div>
@@ -593,7 +684,7 @@ export const SellerView: React.FC = () => {
 
             <button
               type="submit"
-              className="px-5 py-2.5 rounded-xl bg-slate-900 text-white font-bold text-xs sm:text-sm hover:bg-slate-800 transition flex items-center gap-2"
+              className="px-5 py-2.5 rounded-xl bg-slate-900 text-white font-bold text-xs sm:text-sm hover:bg-slate-800 transition flex items-center gap-2 active:scale-95"
             >
               <Save className="w-4 h-4" /> Guardar Información de Tienda
             </button>
@@ -897,7 +988,7 @@ export const SellerView: React.FC = () => {
                   );
                   setTrackingModal(null);
                 }}
-                className="flex-1 py-2.5 bg-rose-600 text-white font-bold text-xs rounded-xl hover:bg-rose-700"
+                className="flex-1 py-2.5 bg-rose-600 text-white font-bold text-xs rounded-xl hover:bg-rose-700 active:scale-95"
               >
                 Confirmar Envío
               </button>
@@ -906,6 +997,81 @@ export const SellerView: React.FC = () => {
                 className="px-4 py-2.5 bg-slate-100 text-slate-700 font-bold text-xs rounded-xl"
               >
                 Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Shipping Label / Packing Slip Modal */}
+      {labelModalData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl border border-slate-200 text-xs">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+              <div className="flex items-center gap-2">
+                <Printer className="w-5 h-5 text-indigo-600" />
+                <h3 className="font-bold text-slate-900 text-base">Guía de Paquetería &amp; Packing Slip</h3>
+              </div>
+              <button
+                onClick={() => setLabelModalData(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Label voucher design */}
+            <div className="border-2 border-slate-800 p-4 rounded-xl bg-slate-50 space-y-3 font-mono">
+              <div className="flex justify-between items-center border-b pb-2">
+                <span className="font-bold text-sm tracking-wider">
+                  {labelModalData.subOrder.carrier || 'DHL EXPRESS'}
+                </span>
+                <span className="text-[11px] font-bold">NACIONAL DÍA SIGUIENTE</span>
+              </div>
+
+              <div>
+                <p className="text-[10px] text-slate-500">REMITENTE:</p>
+                <p className="font-bold text-slate-900">{currentSeller.storeName}</p>
+                <p className="text-[11px] text-slate-600">{currentSeller.legalName}</p>
+              </div>
+
+              <div className="border-t pt-2">
+                <p className="text-[10px] text-slate-500">DESTINATARIO:</p>
+                <p className="font-bold text-slate-900">{labelModalData.buyerName}</p>
+                <p className="text-[11px] text-slate-700">
+                  {labelModalData.shippingAddress.street}, {labelModalData.shippingAddress.colonia}
+                </p>
+                <p className="text-[11px] text-slate-700">
+                  {labelModalData.shippingAddress.city}, {labelModalData.shippingAddress.state} C.P. {labelModalData.shippingAddress.postalCode}
+                </p>
+                <p className="text-[10px] text-slate-500">Tel: {labelModalData.buyerPhone}</p>
+              </div>
+
+              {/* Barcode visual */}
+              <div className="border-t pt-3 text-center">
+                <div className="h-10 w-full flex items-center justify-center bg-white border border-slate-300 rounded tracking-widest text-slate-900 font-bold text-sm">
+                  ||||| | |||| || |||||| | ||||| |||
+                </div>
+                <p className="text-[11px] font-bold mt-1">
+                  GUÍA: {labelModalData.subOrder.trackingNumber || 'GENERACIÓN PENDIENTE'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={() => {
+                  window.print();
+                }}
+                className="flex-1 py-2.5 bg-slate-900 text-white font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-slate-800 active:scale-95"
+              >
+                <Printer className="w-4 h-4" /> Imprimir Etiqueta
+              </button>
+              <button
+                onClick={() => setLabelModalData(null)}
+                className="px-4 py-2.5 bg-slate-100 text-slate-700 font-bold rounded-xl"
+              >
+                Cerrar
               </button>
             </div>
           </div>

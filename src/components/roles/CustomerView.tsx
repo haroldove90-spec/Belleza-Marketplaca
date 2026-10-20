@@ -15,6 +15,9 @@ import {
   Camera,
   MessageSquare,
   ShieldAlert,
+  Plus,
+  ArrowRight,
+  X,
 } from 'lucide-react';
 import { useMarketplace } from '../../context/MarketplaceContext';
 import { Product, ProductReview } from '../../types';
@@ -30,12 +33,14 @@ export const CustomerView: React.FC<Props> = ({ onOpenCart }) => {
     products,
     categories,
     addToCart,
+    cart,
     orders,
     confirmOrderReceived,
     createDispute,
     addReview,
     salonsDirectory,
     savedAddresses,
+    addAddress,
   } = useMarketplace();
 
   // Search & Filter state
@@ -57,8 +62,21 @@ export const CustomerView: React.FC<Props> = ({ onOpenCart }) => {
   const [disputeModalData, setDisputeModalData] = useState<{ orderId: string; subOrderId: string } | null>(null);
   const [disputeReason, setDisputeReason] = useState('');
 
+  // Add Address Form State in Cuenta tab
+  const [showAddAddressModal, setShowAddAddressModal] = useState(false);
+  const [newFullName, setNewFullName] = useState('');
+  const [newStreet, setNewStreet] = useState('');
+  const [newColonia, setNewColonia] = useState('');
+  const [newCity, setNewCity] = useState('');
+  const [newState, setNewState] = useState('');
+  const [newPostalCode, setNewPostalCode] = useState('');
+  const [newPhone, setNewPhone] = useState('');
+
   // Customer's orders
   const myOrders = orders.filter((o) => o.buyerRole === 'customer' || o.buyerId === 'user-cust-1');
+
+  // Total cart quantity
+  const totalCartCount = cart.reduce((acc, curr) => acc + curr.quantity, 0);
 
   // Unique brands list
   const brands = useMemo(() => {
@@ -109,8 +127,30 @@ export const CustomerView: React.FC<Props> = ({ onOpenCart }) => {
     setDisputeReason('');
   };
 
+  const handleSaveNewAddress = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newFullName || !newStreet || !newPostalCode) return;
+    addAddress({
+      fullName: newFullName,
+      street: newStreet,
+      colonia: newColonia || 'Centro',
+      city: newCity || 'Ciudad de México',
+      state: newState || 'CDMX',
+      postalCode: newPostalCode,
+      phone: newPhone || '55 0000 0000',
+      isDefault: savedAddresses.length === 0,
+    });
+    setShowAddAddressModal(false);
+    setNewFullName('');
+    setNewStreet('');
+    setNewColonia('');
+    setNewCity('');
+    setNewPostalCode('');
+    setNewPhone('');
+  };
+
   return (
-    <div className="w-full max-w-7xl mx-auto space-y-6 pb-20 lg:pb-10">
+    <div className="w-full max-w-7xl mx-auto space-y-6 pb-28 lg:pb-10 relative">
       {/* Tab: Explorar Catálogo */}
       {activeTab === 'catalogo' && (
         <div className="space-y-6">
@@ -504,11 +544,20 @@ export const CustomerView: React.FC<Props> = ({ onOpenCart }) => {
       {/* Tab: Cuenta & Direcciones */}
       {activeTab === 'cuenta' && (
         <div className="space-y-6">
-          <div>
-            <h2 className="text-xl font-bold text-slate-900">Mi Perfil &amp; Direcciones</h2>
-            <p className="text-xs sm:text-sm text-slate-500">
-              Gestiona tus domicilios de entrega para compras rápidas con un solo toque.
-            </p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-bold text-slate-900">Mi Perfil &amp; Direcciones</h2>
+              <p className="text-xs sm:text-sm text-slate-500">
+                Gestiona tus domicilios de entrega para compras rápidas con un solo toque.
+              </p>
+            </div>
+
+            <button
+              onClick={() => setShowAddAddressModal(true)}
+              className="px-4 py-2 bg-rose-600 text-white font-bold text-xs rounded-xl shadow-xs hover:bg-rose-700 transition flex items-center gap-1.5 self-start sm:self-auto"
+            >
+              <Plus className="w-4 h-4" /> Agregar Dirección
+            </button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -546,6 +595,20 @@ export const CustomerView: React.FC<Props> = ({ onOpenCart }) => {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Floating Sticky Cart Button on Mobile/Tablet */}
+      {totalCartCount > 0 && (
+        <div className="fixed bottom-20 right-4 sm:right-6 z-40 lg:hidden animate-bounce">
+          <button
+            onClick={onOpenCart}
+            className="flex items-center gap-2.5 px-4 py-3 bg-gradient-to-r from-rose-600 to-rose-700 text-white font-bold text-xs sm:text-sm rounded-full shadow-2xl hover:scale-105 active:scale-95 transition"
+          >
+            <ShoppingBag className="w-5 h-5 text-white" />
+            <span>Ver Carrito ({totalCartCount})</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
         </div>
       )}
 
@@ -646,6 +709,99 @@ export const CustomerView: React.FC<Props> = ({ onOpenCart }) => {
                 <button
                   type="button"
                   onClick={() => setDisputeModalData(null)}
+                  className="px-4 py-2.5 bg-slate-100 text-slate-700 font-bold rounded-xl"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Address Modal in Cuenta */}
+      {showAddAddressModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl text-xs">
+            <div className="flex items-center justify-between pb-2 border-b">
+              <h3 className="font-bold text-slate-900 text-base">Nueva Dirección de Entrega</h3>
+              <button onClick={() => setShowAddAddressModal(false)} className="text-slate-400 hover:text-slate-700">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveNewAddress} className="space-y-3">
+              <input
+                type="text"
+                placeholder="Nombre Completo o de Recepción"
+                value={newFullName}
+                onChange={(e) => setNewFullName(e.target.value)}
+                className="w-full p-2.5 border rounded-xl"
+                required
+              />
+              <input
+                type="text"
+                placeholder="Calle y Número Exterior / Interior"
+                value={newStreet}
+                onChange={(e) => setNewStreet(e.target.value)}
+                className="w-full p-2.5 border rounded-xl"
+                required
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="text"
+                  placeholder="Colonia"
+                  value={newColonia}
+                  onChange={(e) => setNewColonia(e.target.value)}
+                  className="p-2.5 border rounded-xl"
+                  required
+                />
+                <input
+                  type="text"
+                  placeholder="Código Postal"
+                  value={newPostalCode}
+                  onChange={(e) => setNewPostalCode(e.target.value)}
+                  className="p-2.5 border rounded-xl"
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="text"
+                  placeholder="Ciudad / Municipio"
+                  value={newCity}
+                  onChange={(e) => setNewCity(e.target.value)}
+                  className="p-2.5 border rounded-xl"
+                  required
+                />
+                <input
+                  type="text"
+                  placeholder="Estado"
+                  value={newState}
+                  onChange={(e) => setNewState(e.target.value)}
+                  className="p-2.5 border rounded-xl"
+                  required
+                />
+              </div>
+              <input
+                type="text"
+                placeholder="Teléfono Celular"
+                value={newPhone}
+                onChange={(e) => setNewPhone(e.target.value)}
+                className="w-full p-2.5 border rounded-xl"
+                required
+              />
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 bg-rose-600 text-white font-bold rounded-xl hover:bg-rose-700"
+                >
+                  Guardar Domicilio
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAddAddressModal(false)}
                   className="px-4 py-2.5 bg-slate-100 text-slate-700 font-bold rounded-xl"
                 >
                   Cancelar
