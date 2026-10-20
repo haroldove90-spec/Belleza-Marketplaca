@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#881337" />
+      <stop offset="50%" stop-color="#be123c" />
+      <stop offset="100%" stop-color="#f43f5e" />
+    </linearGradient>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fde047" />
+      <stop offset="50%" stop-color="#f59e0b" />
+      <stop offset="100%" stop-color="#d97706" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Background rounded squircle with safe margin for maskable icon -->
+  <rect width="512" height="512" rx="110" fill="url(#bg)" />
+
+  <!-- Inner delicate ring -->
+  <circle cx="256" cy="256" r="185" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="3" stroke-dasharray="6 6" />
+
+  <!-- Central stylized beauty flower & shears emblem -->
+  <g transform="translate(256, 256)" filter="url(#glow)">
+    <!-- Stylist scissor silhouettes crossing gracefully in gold -->
+    <path d="M-60,70 C-40,50 -20,20 0,-30 C20,20 40,50 60,70 C75,85 70,110 50,115 C30,120 15,100 5,85 L0,50 L-5,85 C-15,100 -30,120 -50,115 C-70,110 -75,85 -60,70 Z" fill="url(#gold)" opacity="0.95" />
+    
+    <!-- Scissor rings -->
+    <circle cx="-50" cy="95" r="14" fill="#881337" stroke="url(#gold)" stroke-width="4" />
+    <circle cx="50" cy="95" r="14" fill="#881337" stroke="url(#gold)" stroke-width="4" />
+
+    <!-- Center cosmetic droplet / crystal hair silhouette -->
+    <path d="M0,-120 C-45,-60 -55,-10 0,35 C55,-10 45,-60 0,-120 Z" fill="#ffffff" opacity="0.95" />
+    <path d="M0,-95 C-25,-50 -30,-15 0,18 C30,-15 25,-50 0,-95 Z" fill="#ffe4e6" />
+
+    <!-- Sparkle Stars -->
+    <path d="M-90,-60 L-85,-45 L-70,-40 L-85,-35 L-90,-20 L-95,-35 L-110,-40 L-95,-45 Z" fill="url(#gold)" />
+    <path d="M90,-70 L94,-58 L106,-54 L94,-50 L90,-38 L86,-50 L74,-54 L86,-58 Z" fill="url(#gold)" />
+    <path d="M0,-140 L3,-130 L13,-127 L3,-124 L0,-114 L-3,-124 L-13,-127 L-3,-130 Z" fill="url(#gold)" />
+  </g>
+
+  <!-- Typography subtitled inside safe zone -->
+  <text x="256" y="420" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="28" font-weight="800" letter-spacing="4" fill="#ffffff" text-anchor="middle">
+    MARKETPLACE
+  </text>
+  <text x="256" y="445" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="18" font-weight="600" letter-spacing="6" fill="#fde047" text-anchor="middle">
+    BELLEZA &amp; PRO
+  </text>
+</svg>

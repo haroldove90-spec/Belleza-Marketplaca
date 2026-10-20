@@ -1,0 +1,8 @@
+{
+  "name": "Marketplace Belleza",
+  "description": "Plataforma integral y responsiva para venta de productos de belleza, cosmética y suministros profesionales para estilistas con gestión multi-rol.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
